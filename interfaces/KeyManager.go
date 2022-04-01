@@ -6,5 +6,6 @@ type KeyManager interface {
 	RegisterProvider(string, Provider)
 	DeleteProvider(string)
 	GetKeyByProviderId(string) types.Key
-	RefreshKeys() error
+	RefreshKeys(string) types.Key
+	RefreshAllKeys() map[string]types.Key
 }

@@ -14,70 +14,57 @@ type keyProvider struct {
 }
 
 type keyManager struct {
-	// providers []interfaces.Provider
-	// keys      map[string]types.Key
 	kp map[string]keyProvider
 }
 
 func (keyman *keyManager) RegisterProvider(p interfaces.Provider) {
-	keyman.providers = append(keyman.providers, p)
 	key, err := p.FetchKeyFromStore()
-	keyman.keys[p.GetIdentifier()] = key
 	if err.Error() != "" {
 		log.Println("Failed to register provider due to fetching")
+	}
+	keyman.kp[p.GetIdentifier()] = keyProvider{
+		p: p,
+		k: key,
 	}
 }
 
 func (keyman *keyManager) GetKeyByProviderId(x string) types.Key {
-	key := keyman.keys[x]
+	key := keyman.kp[x].k
 	return key
 }
 
 func (keyman *keyManager) DeleteProvider(p interfaces.Provider) {
-	for i := 0; i < len(keyman.providers); i++ {
-		if keyman.providers[i].GetIdentifier() == p.GetIdentifier() {
-			keyman.providers = append(keyman.providers[:i], keyman.providers[i+1:]...)
-			i--
-			break
-		} else {
-			log.Println("Provider with this ID is not found!")
-
-		}
-	}
+	delete(keyman.kp, p.GetIdentifier())
 }
 
-func (keyman *keyManager) RefreshAllKeys() map[string]types.Key {
+func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
 	var wg sync.WaitGroup
-	wg.Add(len(keyman.providers))
-	for _, provider := range keyman.providers {
-		go func(provider interfaces.Provider) {
+	wg.Add(len(keyman.kp))
+	for x, keyProvider := range keyman.kp {
+		go func() { //do i need the same copy of variable?
 			defer wg.Done()
-			key, err := provider.FetchKeyFromStore()
+			key, err := keyProvider.p.FetchKeyFromStore()
+			keyProvider.k = key
+			keyman.kp[x] = keyProvider
 			if err.Error() != "" {
 				log.Println("Failed to refresh due to fetching")
 			}
-			keyman.keys[provider.GetIdentifier()] = key
-		}(provider)
+		}()
 	}
 	wg.Wait()
-	return keyman.keys
+	return keyman.kp
 }
 
-func (keyman *keyManager) RefreshKeys(x string) types.Key {
-	for i := 0; i < len(keyman.providers); i++ {
-		if keyman.providers[i].GetIdentifier() == x {
-			key, err := keyman.providers[i].FetchKeyFromStore()
-			if err.Error() != "" {
-				log.Println("Failed to refresh due to fetching")
-			}
-			keyman.keys[x] = key
-			break
-		} else {
-			log.Println("Provider with this ID is not found!")
+func (keyman *keyManager) RefreshKey(x string) keyProvider {
+	keyProv := keyman.kp[x]
+	key, err := keyProv.p.FetchKeyFromStore()
+	if err.Error() != "" {
+		log.Println("Failed to refresh due to fetching")
+		return keyProvider{}
 
-		}
 	}
-	return keyman.keys[x]
+	keyProv.k = key
+	return keyman.kp[x]
 
 }
 

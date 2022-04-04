@@ -6,7 +6,6 @@ import (
 
 	"github.com/rawansuww/go-keyman/interfaces"
 	"github.com/rawansuww/go-keyman/types"
-	"go.uber.org/fx"
 )
 
 type keyManager struct {
@@ -82,7 +81,3 @@ func NewKeyManager(pp []interfaces.Provider, kk map[string]types.Key) *keyManage
 		keys:      kk,
 	}
 }
-
-var Module = fx.Options(
-	fx.Provide(NewKeyManager),
-)

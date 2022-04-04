@@ -1,4 +1,4 @@
-package implementation
+package gokeyman
 
 import (
 	"fmt"
@@ -7,7 +7,6 @@ import (
 	"regexp"
 
 	"github.com/rawansuww/go-keyman/types"
-	"go.uber.org/fx"
 )
 
 type fileProvider struct {
@@ -82,7 +81,3 @@ func NewFileProvider(id string, name string, privatePath string, publicPath stri
 		kidPath:     kidPath,
 	}
 }
-
-var Module = fx.Options(
-	fx.Provide(NewFileProvider),
-)

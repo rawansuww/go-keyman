@@ -11,6 +11,6 @@ type KeyManager interface {
 }
 
 type Provider interface {
-	FetchKeyFromStore() (types.Key, error)
+	FetchKeyFromStore() (types.Key, types.InternalError)
 	GetIdentifier() string
 }

@@ -41,7 +41,7 @@ func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
 	var wg sync.WaitGroup
 	wg.Add(len(keyman.kp))
 	for x, keyProvider := range keyman.kp {
-		go func() { //do i need the same copy of variable?
+		go func() { //do i need the same copy of variable?, throws error when pass keyProvider
 			defer wg.Done()
 			key, err := keyProvider.p.FetchKeyFromStore()
 			keyProvider.k = key
@@ -58,7 +58,7 @@ func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
 func (keyman *keyManager) RefreshKey(x string) keyProvider {
 	keyProv := keyman.kp[x]
 	key, err := keyProv.p.FetchKeyFromStore()
-	if err.Error() != "" {
+	if err.ErrorDetails.Error() != "" {
 		log.Println("Failed to refresh due to fetching")
 		return keyProvider{}
 

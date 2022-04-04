@@ -9,3 +9,8 @@ type KeyManager interface {
 	RefreshKeys(string) types.Key
 	RefreshAllKeys() map[string]types.Key
 }
+
+type Provider interface {
+	FetchKeyFromStore() (types.Key, types.InternalError)
+	GetIdentifier() string
+}

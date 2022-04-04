@@ -1,4 +1,4 @@
-package keymanager
+package gokeyman
 
 import (
 	"log"

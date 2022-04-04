@@ -8,9 +8,15 @@ import (
 	"github.com/rawansuww/go-keyman/types"
 )
 
+type keyProvider struct {
+	p interfaces.Provider
+	k types.Key
+}
+
 type keyManager struct {
-	providers []interfaces.Provider
-	keys      map[string]types.Key
+	// providers []interfaces.Provider
+	// keys      map[string]types.Key
+	kp map[string]keyProvider
 }
 
 func (keyman *keyManager) RegisterProvider(p interfaces.Provider) {
@@ -75,9 +81,12 @@ func (keyman *keyManager) RefreshKeys(x string) types.Key {
 
 }
 
-func NewKeyManager(pp []interfaces.Provider, kk map[string]types.Key) *keyManager {
-	return &keyManager{
-		providers: pp,
-		keys:      kk,
+func NewKeyManager(pp []interfaces.Provider) *keyManager {
+	keyman := new(keyManager)
+	kp := make(map[string]keyProvider)
+	keyman.kp = kp
+	for _, provider := range pp {
+		keyman.RegisterProvider(provider)
 	}
+	return keyman
 }

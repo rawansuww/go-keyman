@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 
+	"github.com/rawansuww/go-keyman/interfaces"
 	"github.com/rawansuww/go-keyman/types"
 )
 
@@ -17,6 +18,8 @@ type fileProvider struct {
 	thumbPath   string
 	kidPath     string
 }
+
+var _ interfaces.Provider = (*fileProvider)(nil)
 
 func (p *fileProvider) GetIdentifier() (x string) {
 	return p.id
@@ -73,13 +76,11 @@ func (p *fileProvider) FetchKeyFromStore() (types.Key, error) {
 	}, nil
 }
 
-func NewFileProvider(id string, name string, privatePath string, publicPath string, thumbPath string, kidPath string) *fileProvider {
+func NewFileProvider(id string, name string, privatePath string, publicPath string, algo string) *fileProvider {
 	return &fileProvider{
 		id:          id,
 		name:        name,
 		privatePath: privatePath,
 		publicPath:  publicPath,
-		thumbPath:   thumbPath,
-		kidPath:     kidPath,
 	}
 }

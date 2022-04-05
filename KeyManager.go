@@ -40,16 +40,16 @@ func (keyman *keyManager) DeleteProvider(p interfaces.Provider) {
 func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
 	var wg sync.WaitGroup
 	wg.Add(len(keyman.kp))
-	for x, keyProvider := range keyman.kp {
-		go func() { //do i need the same copy of variable?, throws error when pass keyProvider
+	for x, kp := range keyman.kp {
+		go func(k *keyProvider, id string) {
 			defer wg.Done()
-			key, err := keyProvider.p.FetchKeyFromStore()
-			keyProvider.k = key
-			keyman.kp[x] = keyProvider
+			key, err := k.p.FetchKeyFromStore()
+			k.k = key
+			keyman.kp[id] = *k
 			if err.Error() != "" {
 				log.Println("Failed to refresh due to fetching")
 			}
-		}()
+		}(&kp, x)
 	}
 	wg.Wait()
 	return keyman.kp

@@ -1,10 +1,12 @@
 package gokeyman
 
 import (
-	"bytes"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -14,13 +16,23 @@ import (
 	"github.com/rawansuww/go-keyman/types"
 )
 
-//did not understand how to get thumb and kid
+var (
+	ErrNotECPublicKey   = errors.New("Key is not a valid ECDSA public key")
+	ErrNotECPrivateKey  = errors.New("Key is not a valid ECDSA private key")
+	ErrNotRSAPublicKey  = errors.New("Key is not a valid RSA public key")
+	ErrNotRSAPrivateKey = errors.New("Key is not a valid RSA private key")
+	ErrFileFormat       = errors.New("Key file does not follow proper format")
+	ErrBadPEM           = errors.New("Bad key data")
+	ErrParsePrivate     = errors.New("Error parsing the private key")
+	ErrParsePublic      = errors.New("Error parsing the public key")
+	ErrBadRegex         = errors.New("Regex is faulty")
+)
+
 type crtFileProvider struct {
 	id          string
 	name        string
 	privatePath string
 	publicPath  string
-	algorithm   string
 }
 
 var _ interfaces.Provider = (*crtFileProvider)(nil)
@@ -31,10 +43,10 @@ func (p *crtFileProvider) GetIdentifier() (x string) {
 
 //FILE VALIDATION : CONTENT AND FILE TYPE
 func (p *crtFileProvider) FetchKeyFromStore() (types.Key, types.InternalError) {
-	var decodedPriv, decodedPublic []byte
+	var decodedPriv, decodedPublic, thumbPrint []byte
 	var err types.InternalError
 	if p.privatePath == "" && p.publicPath == "" {
-		return types.Key{}, types.InternalError{ErrorMessage: "No path for both private and public key was specified"}
+		return types.Key{}, types.InternalError{ErrorDetails: errors.New("No path for both private and public key was specified")}
 	}
 
 	if p.privatePath != "" {
@@ -43,7 +55,7 @@ func (p *crtFileProvider) FetchKeyFromStore() (types.Key, types.InternalError) {
 			log.Println("Error reading private key FILE, or path does not exist")
 			return types.Key{}, types.InternalError{ErrorMessage: "Error reading private key file", ErrorDetails: err1}
 		}
-		decodedPriv, err = parseDecodeKey(privKey, p.algorithm)
+		decodedPriv, err = DecodePrivateKey(privKey)
 
 	}
 
@@ -53,15 +65,15 @@ func (p *crtFileProvider) FetchKeyFromStore() (types.Key, types.InternalError) {
 			log.Println("Error reading private key FILE, or path does not exist")
 			return types.Key{}, types.InternalError{ErrorMessage: "Error reading private key file", ErrorDetails: err1}
 		}
-		decodedPublic, err = parseDecodeKey(pubKey, p.algorithm)
+		decodedPublic, thumbPrint, err = DecodePublicKey(pubKey)
 
 	}
 
 	return types.Key{
 		PrivateKey: decodedPriv,
 		PublicKey:  decodedPublic,
-		//Thumbprint: thumb,
-		//KeyId:      kid,
+		Thumbprint: thumbPrint,
+		KeyId:      thumbPrint,
 	}, err
 }
 
@@ -74,26 +86,65 @@ func NewCrtFileProvider(id string, name string, privatePath string, publicPath s
 	}
 }
 
-func getThumb(publicKey []byte) (x []byte) {
-	// pass cert bytes
-	block, _ := pem.Decode(publicKey)
-	cert, err := x509.ParseCertificate(block.Bytes)
+//deccode the public key
+func DecodePublicKey(key []byte) ([]byte, []byte, types.InternalError) {
+	var decodedKey []byte
+	PEMString := "(-----BEGIN .+?-----(?s).+?-----END .+?-----)"
+	ok, err := regexp.MatchString(PEMString, string(key))
 	if err != nil {
-		panic(err)
+		log.Println("Faulty regex")
+		return nil, nil, types.InternalError{ErrorMessage: "Bad regex", ErrorDetails: ErrBadRegex}
+	}
+	if !ok {
+		log.Println("Key file does not follow proper format.")
+		return nil, nil, types.InternalError{ErrorMessage: "Key does not follow format", ErrorDetails: ErrFileFormat}
+	}
+	block, _ := pem.Decode(key)
+	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if block == nil {
+		log.Fatalf("bad key data: %s", "not PEM-encoded")
+		return nil, nil, types.InternalError{ErrorMessage: "Decoding bad PEM", ErrorDetails: ErrBadPEM}
+	}
+	if cert.PublicKeyAlgorithm == x509.RSA {
+		//get the key
+		parsedKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+		cert, err := x509.ParseCertificate(block.Bytes)
+		parsedKey = cert.PublicKey
+
+		//check if key type is actually RSA
+		var pkey *rsa.PublicKey
+		var ok bool
+		if pkey, ok = parsedKey.(*rsa.PublicKey); !ok {
+			return nil, nil, types.InternalError{ErrorDetails: ErrNotRSAPrivateKey}
+
+			decodedKey = x509.MarshalPKCS1PublicKey(pkey) //marshal the key back into []byte format so that we may store it
+		} else if cert.PublicKeyAlgorithm == x509.ECDSA {
+			// Parse the key
+			var parsedKey interface{}
+			if parsedKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
+				if cert, err := x509.ParseCertificate(block.Bytes); err == nil {
+					parsedKey = cert.PublicKey
+				} else {
+					return nil, nil, types.InternalError{ErrorDetails: ErrParsePublic}
+				}
+			}
+
+			var pkey *ecdsa.PublicKey
+			var ok bool
+			if pkey, ok = parsedKey.(*ecdsa.PublicKey); !ok {
+				return nil, nil, types.InternalError{ErrorDetails: ErrNotECPublicKey}
+			}
+			decodedKey, _ = x509.MarshalPKIXPublicKey(pkey) //marshal the key back into []byte format so that we may store it
+		}
 	}
 	fingerprint := sha1.Sum(cert.Raw)
-	var buf bytes.Buffer
-	for i, f := range fingerprint {
-		if i > 0 {
-			fmt.Fprintf(&buf, ":")
-		}
-		fmt.Fprintf(&buf, "%02X", f)
-	}
-	fmt.Printf("Fingerprint: %s\n", buf.String())
-	return []byte(buf)
+	thumbPrint := fingerprint[:]
+	return decodedKey, thumbPrint, types.InternalError{}
 }
 
-func parseDecodeKey(key []byte, algo string) ([]byte, types.InternalError) {
+//decode the private key
+func DecodePrivateKey(key []byte) ([]byte, types.InternalError) {
 	var decodedKey []byte
 	PEMString := "(-----BEGIN .+?-----(?s).+?-----END .+?-----)"
 	ok, err := regexp.MatchString(PEMString, string(key))
@@ -102,28 +153,44 @@ func parseDecodeKey(key []byte, algo string) ([]byte, types.InternalError) {
 	}
 	if !ok {
 		log.Println("Key file does not follow proper format.")
-		return []byte(""), types.InternalError{ErrorMessage: "Key file does not follow proper format.", ErrorDetails: err}
+		return []byte(""), types.InternalError{ErrorMessage: "Key does not follow proper format.", ErrorDetails: ErrFileFormat}
 	}
 	block, _ := pem.Decode(key)
 	if block == nil {
 		log.Fatalf("bad key data: %s", "not PEM-encoded")
-		return []byte(""), types.InternalError{ErrorMessage: "Decoding bad PEM", ErrorDetails: err}
-	}
-	if block.Type != algo { //need to handle rest of types
-		//throw error to say the sent PEM isnt same as  desired algorithm
-		//although it's probably faster to just check block.Type and decode accordingly, without extra field of algo
+		return []byte(""), types.InternalError{ErrorMessage: "Decoding bad PEM", ErrorDetails: ErrBadPEM}
 	}
 
-	if algo == "rsa" {
-		pk, err := x509.ParsePKCS1PublicKey(block.Bytes)
-		v := []byte(pk)
-		if err != nil {
-			log.Fatalf("parse bad private key: %s", err)
-			return []byte(""), types.InternalError{ErrorMessage: "Parsing bad private key.", ErrorDetails: err}
+	cert, err := x509.ParseCertificate(block.Bytes)
+
+	if cert.PublicKeyAlgorithm == x509.RSA {
+		var pkey *rsa.PrivateKey
+		var ok bool
+		var parsedKey interface{}
+		if parsedKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
+			if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
+				return nil, types.InternalError{ErrorDetails: err}
+			}
 		}
+		if pkey, ok = parsedKey.(*rsa.PrivateKey); !ok {
+			return nil, types.InternalError{ErrorDetails: ErrNotECPrivateKey}
+		}
+		decodedKey = x509.MarshalPKCS1PrivateKey(pkey) //marshal the key back into []byte format so that we may store it
 
-	} else if algo == "hsa" {
-	} else if algo == "" {
+	} else if cert.PublicKeyAlgorithm == x509.ECDSA {
+		// Parse the key
+		var pkey *ecdsa.PrivateKey
+		var ok bool
+		var parsedKey interface{}
+		if parsedKey, err = x509.ParseECPrivateKey(block.Bytes); err != nil {
+			if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
+				return nil, types.InternalError{ErrorDetails: ErrParsePrivate}
+			}
+		}
+		if pkey, ok = parsedKey.(*ecdsa.PrivateKey); !ok {
+			return nil, types.InternalError{ErrorDetails: ErrNotECPrivateKey}
+		}
+		decodedKey, _ = x509.MarshalECPrivateKey(pkey) //marshal the key back into []byte format so that we may store it
 	}
 
 	return decodedKey, types.InternalError{}

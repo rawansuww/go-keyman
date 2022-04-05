@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"regexp"
@@ -149,16 +148,17 @@ func DecodePrivateKey(key []byte) ([]byte, types.InternalError) {
 	PEMString := "(-----BEGIN .+?-----(?s).+?-----END .+?-----)"
 	ok, err := regexp.MatchString(PEMString, string(key))
 	if err != nil {
-		fmt.Println("your regex is faulty")
+		log.Println("Bad regex.")
+		return nil, types.InternalError{ErrorMessage: "Bad regex.", ErrorDetails: ErrBadRegex}
 	}
 	if !ok {
 		log.Println("Key file does not follow proper format.")
-		return []byte(""), types.InternalError{ErrorMessage: "Key does not follow proper format.", ErrorDetails: ErrFileFormat}
+		return nil, types.InternalError{ErrorMessage: "Key does not follow proper format.", ErrorDetails: ErrFileFormat}
 	}
 	block, _ := pem.Decode(key)
 	if block == nil {
 		log.Fatalf("bad key data: %s", "not PEM-encoded")
-		return []byte(""), types.InternalError{ErrorMessage: "Decoding bad PEM", ErrorDetails: ErrBadPEM}
+		return nil, types.InternalError{ErrorMessage: "Decoding bad PEM", ErrorDetails: ErrBadPEM}
 	}
 
 	cert, err := x509.ParseCertificate(block.Bytes)

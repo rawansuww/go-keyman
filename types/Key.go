@@ -1,8 +1,8 @@
 package types
 
 type Key struct {
-	PublicKey  []byte
-	PrivateKey []byte
-	Thumbprint []byte
-	KeyId      []byte
+	PublicKey  any
+	PrivateKey any
+	Thumbprint any
+	KeyId      any
 }

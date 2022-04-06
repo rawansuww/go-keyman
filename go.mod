@@ -4,6 +4,8 @@ go 1.18
 
 require go.uber.org/fx v1.17.1
 
+require github.com/google/uuid v1.3.0 // indirect
+
 require (
 	go.uber.org/atomic v1.6.0 // indirect
 	go.uber.org/dig v1.14.0 // indirect

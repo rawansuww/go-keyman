@@ -51,8 +51,8 @@ func (p *crtFileProvider) FetchKeyFromStore() (types.Key, types.InternalError) {
 	if p.publicPath != "" { //not null public path
 		pubKey, err1 := os.ReadFile(p.publicPath)
 		if err1 != nil {
-			log.Println("Error reading private key FILE, or path does not exist")
-			return types.Key{}, types.InternalError{ErrorMessage: "Error reading private key file", ErrorDetails: err1}
+			log.Println("Error reading public key FILE, or path does not exist")
+			return types.Key{}, types.InternalError{ErrorMessage: "Error reading public key file", ErrorDetails: err1}
 		}
 		if p.algorithm == "RSA" || p.algorithm == "rsa" { //check against supplied algorithm type
 			decodedPublic, thumbPrint, err = RSAPublicKeyFromPEM(pubKey)
@@ -76,12 +76,14 @@ func RSAPublicKeyFromPEM(key []byte) (*rsa.PublicKey, []byte, types.InternalErro
 	if regex := Regex(string(key)); regex != nil {
 		return nil, nil, types.InternalError{ErrorMessage: regex.Error(), ErrorDetails: regex}
 	}
+
 	//decode PEM block
 	var err error
 	block, _ := pem.Decode([]byte(key))
 	if block == nil {
 		return nil, nil, types.InternalError{ErrorMessage: "failed to decode PEM block"}
 	}
+
 	//parse key
 	var parsedKey interface{}
 	if parsedKey, err = x509.ParsePKIXPublicKey(block.Bytes); err != nil {
@@ -92,7 +94,7 @@ func RSAPublicKeyFromPEM(key []byte) (*rsa.PublicKey, []byte, types.InternalErro
 				thumbPrint := fingerprint[:]
 				return parsedKey.(*rsa.PublicKey), thumbPrint, types.InternalError{}
 			} else {
-				return nil, nil, types.InternalError{ErrorMessage: err.Error(), ErrorDetails: err}
+				return nil, nil, types.InternalError{ErrorMessage: "Failed to parse public key", ErrorDetails: err}
 			}
 		}
 	}
@@ -120,7 +122,7 @@ func RSAPrivateKeyFromPEM(key []byte) (*rsa.PrivateKey, types.InternalError) {
 	var parsedKey interface{}
 	if parsedKey, err = x509.ParsePKCS1PrivateKey(block.Bytes); err != nil {
 		if parsedKey, err = x509.ParsePKCS8PrivateKey(block.Bytes); err != nil {
-			return nil, types.InternalError{ErrorMessage: err.Error()}
+			return nil, types.InternalError{ErrorMessage: "Failed to parse private key", ErrorDetails: err}
 		}
 	}
 	//validate RSA type

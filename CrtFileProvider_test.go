@@ -2,43 +2,36 @@ package gokeyman
 
 import (
 	"crypto/rsa"
-	"fmt"
+	"log"
 	"math/big"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/rawansuww/go-keyman/interfaces"
 	"github.com/rawansuww/go-keyman/types"
 )
 
+var id = uuid.New().String()
+var name = "Test Certificate File Provider"
+var public = "Keys/publickey.pem"
+var private = "Keys/privatekey.pem"
+var algorithm = "rsa"
+var crtProvider = NewCrtFileProvider(id, name, public, private, algorithm)
+var provider interfaces.Provider = (*crtFileProvider)(crtProvider)
+
 func TestGetIdentifier(t *testing.T) {
-	id := uuid.New().String()
-	name := "Test Certificate File Provider"
-	public := "Keys/publickey.pem"
-	private := "Keys/privatekey.pem"
-	algorithm := "rsa"
-	jj := NewCrtFileProvider(id, name, public, private, algorithm)
-
 	var expected = id
-	id_test := jj.GetIdentifier()
-
-	fmt.Println(id_test)
+	id_test := provider.GetIdentifier()
+	log.Println(id_test)
 	if id_test != expected {
 		t.Errorf("Expected %s, got %s", expected, id_test)
 	}
-
 }
 
 func TestFetchKeysFromStoreRSA(t *testing.T) {
-	id := uuid.New().String()
-	name := "Test Certificate File Provider"
-	public := "Keys/publickey.pem"
-	private := "Keys/privatekey.pem"
-	algorithm := "rsa" //rsa use case
-	jj := NewCrtFileProvider(id, name, private, public, algorithm)
-
-	key, err := jj.FetchKeyFromStore()
+	key, err := provider.FetchKeyFromStore()
 	if err != (types.InternalError{}) {
-		fmt.Println(err)
+		t.Errorf("Could not fetch key")
 	}
 
 	//note: privatekey.N and publickey.N have same modulus value as key pairs, which is why i'm setting their bigInt value as same

@@ -19,7 +19,7 @@ type keyManager struct {
 
 func (keyman *keyManager) RegisterProvider(p interfaces.Provider) {
 	key, err := p.FetchKeyFromStore()
-	if err.Error() != "" {
+	if err != (types.InternalError{}) {
 		log.Println("Failed to register provider due to fetching")
 	}
 	keyman.kp[p.GetIdentifier()] = keyProvider{
@@ -33,11 +33,11 @@ func (keyman *keyManager) GetKeyByProviderId(x string) types.Key {
 	return key
 }
 
-func (keyman *keyManager) DeleteProvider(p interfaces.Provider) {
-	delete(keyman.kp, p.GetIdentifier())
+func (keyman *keyManager) DeleteProvider(x string) {
+	delete(keyman.kp, x)
 }
 
-func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
+func (keyman *keyManager) RefreshAllKeys() {
 	var wg sync.WaitGroup
 	wg.Add(len(keyman.kp))
 	for x, kp := range keyman.kp {
@@ -46,25 +46,30 @@ func (keyman *keyManager) RefreshAllKeys() map[string]keyProvider {
 			key, err := k.p.FetchKeyFromStore()
 			k.k = key
 			keyman.kp[id] = *k
-			if err.Error() != "" {
+			if err != (types.InternalError{}) {
 				log.Println("Failed to refresh due to fetching")
 			}
 		}(&kp, x)
 	}
 	wg.Wait()
-	return keyman.kp
+
 }
 
-func (keyman *keyManager) RefreshKey(x string) keyProvider {
+func (keyman *keyManager) RefreshKey(x string) {
+	if len(keyman.kp) == 0 {
+		log.Println("empty keymanager")
+
+	}
 	keyProv := keyman.kp[x]
 	key, err := keyProv.p.FetchKeyFromStore()
-	if err.ErrorDetails.Error() != "" {
+	if err != (types.InternalError{}) {
 		log.Println("Failed to refresh due to fetching")
-		return keyProvider{}
 
 	}
 	keyProv.k = key
-	return keyman.kp[x]
+	if keyman.kp[x] == (keyProvider{}) {
+		log.Println("error ")
+	}
 
 }
 

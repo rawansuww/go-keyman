@@ -3,11 +3,11 @@ package interfaces
 import "github.com/rawansuww/go-keyman/types"
 
 type KeyManager interface {
-	RegisterProvider(string, Provider)
+	RegisterProvider(Provider)
 	DeleteProvider(string)
 	GetKeyByProviderId(string) types.Key
-	RefreshKey(string) types.Key
-	RefreshAllKeys() map[string]types.Key
+	RefreshKey(string)
+	RefreshAllKeys()
 }
 
 type Provider interface {

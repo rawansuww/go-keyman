@@ -1,10 +1,9 @@
 package gokeyman
 
 import (
-	"crypto"
 	"crypto/rsa"
 	"fmt"
-	"reflect"
+	"math/big"
 	"testing"
 
 	"github.com/google/uuid"
@@ -29,136 +28,42 @@ func TestGetIdentifier(t *testing.T) {
 
 }
 
-func TestFetchKeysFromStore(t *testing.T) {
+func TestFetchKeysFromStoreRSA(t *testing.T) {
 	id := uuid.New().String()
 	name := "Test Certificate File Provider"
 	public := "Keys/publickey.pem"
 	private := "Keys/privatekey.pem"
-	algorithm := "rsa"
+	algorithm := "rsa" //rsa use case
 	jj := NewCrtFileProvider(id, name, private, public, algorithm)
 
 	key, err := jj.FetchKeyFromStore()
 	if err != (types.InternalError{}) {
 		fmt.Println(err)
 	}
-	// var x *rsa.PublicKey{
-	// 	N:,
-	// 	E
-	// }
-	fmt.Println(reflect.TypeOf(key.PublicKey))
-	fmt.Println(key.PublicKey)
-	fmt.Println(key.PrivateKey)
-	fmt.Println(key.Thumbprint)
-	fmt.Println(key.KeyId)
-	expected:=types.Key{
-		PublicKey: ,
-		PrivateKey: ,
-		Thumbprint: ,
-		KeyId: nil,
+
+	//note: privatekey.N and publickey.N have same modulus value as key pairs, which is why i'm setting their bigInt value as same
+	//adjust bignum values according to changed .pem files
+	//do not use same bignum if not priv/public keyPair (if not share same modulus)
+	var bignum, _ = new(big.Int).SetString("21086672194055230843612669443904574149811002047199307203395284381153222757946337921885021264571719641013039076957836127385367613397254088944127537594742835698599342510485047377962431798843899579770319434276737961042366904179340813692562855003898865028195278616282018741182344735960747779342416070036207295835459331516253126867178440116447801834476800207659890363928165409520291568362358485983049331749816176659779777775050704230265170530312109028338452264162399421025001847654072603050778790932784226771957796904573649393088878115602311774948562636636391090805302582907612057686556952164829704687199975950062033355959", 0)
+
+	expectedPublic := rsa.PublicKey{
+		N: bignum,
+		E: 65537,
 	}
 
-	// if err != (types.InternalError{}) {
-	// 	t.Errorf("what", err)
-	// }
-	// if id_test != expected {
-	// 	t.Errorf("Expected %d, got %d", expected, id_test)
-	// }
+	expectedPrivate := rsa.PrivateKey{
+		PublicKey: expectedPublic,
+	}
+
+	pub := key.PublicKey.(*rsa.PublicKey).N.String()
+	priv := key.PrivateKey.(*rsa.PrivateKey).N.String()
+
+	if pub != expectedPublic.N.String() || priv != expectedPrivate.N.String() {
+		t.Errorf("Expected %s, got %s", pub, expectedPrivate.N.String())
+	}
+
+	if expectedPrivate.PublicKey.Equal(&key.PublicKey) {
+		t.Errorf("Expected %d, got %d", &expectedPrivate.PublicKey, key.PublicKey)
+	}
 
 }
-
-// func TestJsonPost(t *testing.T) {
-// 	ep := "http://localhost:3000/"
-// 	cl := gorest.NewClient()
-
-// 	cl.SetBaseUrl(ep)
-
-// 	expected := map[string]string{
-// 		"name": "Aranyak Ghosh",
-// 	}
-// 	var data map[string]string
-
-// 	resp := cl.Post("", nil, nil, expected, types.JSON)
-
-// 	if resp.Error() != nil {
-// 		t.Errorf("Expected no error, got %v", resp.Error())
-// 	} else if !resp.IsSuccessfulResponse() {
-// 		t.Errorf("Expected success status, got %d", resp.Status())
-// 	} else {
-// 		resp.Result(&data)
-// 		if !reflect.DeepEqual(data, expected) {
-// 			t.Errorf("Expected %v, got %v", expected, data)
-// 		}
-// 	}
-// }
-
-// func TestListLenght(t *testing.T) {
-// 	var q List[int]
-
-// 	var expected = 1
-
-// 	q.Append(5)
-
-// 	len := q.Length()
-
-// 	if expected != len {
-// 		t.Errorf("Expected %d, got %d", expected, len)
-// 	}
-// }
-
-// func TestListRemoveAt(t *testing.T) {
-// 	var q List[int]
-
-// 	var expected = 1
-
-// 	q.Append(expected)
-
-// 	var i = q[0]
-// 	if i != expected {
-// 		t.Errorf("Expected %d, got %d", expected, i)
-// 	}
-
-// 	q.RemoveAt(0)
-
-// 	if q.Length() != 0 {
-// 		t.Errorf("Expected %d, got %d", 0, q.Length())
-// 	}
-
-// }
-
-// func TestListFilter(t *testing.T) {
-// 	var q *List[int] = new(List[int])
-
-// 	*q = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-
-// 	var expected = []int{2, 4, 6, 8, 10}
-
-// 	q = (q.Filter(func(x int) bool {
-// 		return x%2 == 0
-// 	})).(*List[int])
-
-// 	for i := range expected {
-// 		if (*q)[i] != expected[i] {
-// 			t.Errorf("Expected %d, got %d", expected[i], (*q)[i])
-// 			break
-// 		}
-// 	}
-// }
-
-// func TestListMap(t *testing.T) {
-// 	var q *List[int] = new(List[int])
-
-// 	*q = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
-
-// 	var expected = []string{"plsWork-1", "plsWork-2", "plsWork-3", "plsWork-4", "plsWork-5", "plsWork-6", "plsWork-7", "plsWork-8", "plsWork-9", "plsWork-10"}
-
-// 	res := (q.Map(func(x int) any {
-// 		return fmt.Sprintf("plsWork-%d", x)
-// 	})).(*List[any])
-
-// 	for i := range expected {
-// 		if (*res)[i] != expected[i] {
-// 			t.Errorf("Expected %s, got %s", expected[i], (*res)[i])
-// 			break
-// 		}
-// 	}
-// }

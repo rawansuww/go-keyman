@@ -15,6 +15,7 @@ import (
 	"github.com/rawansuww/go-keyman/types"
 )
 
+//sidenote: maybe a good idea to verify if supplied keys are actually a pair (revise algorithms)
 type crtFileProvider struct {
 	id          string
 	name        string
@@ -22,8 +23,6 @@ type crtFileProvider struct {
 	publicPath  string
 	algorithm   string
 }
-
-var _ interfaces.Provider = (*crtFileProvider)(nil)
 
 func (p *crtFileProvider) GetIdentifier() (x string) {
 	return p.id
@@ -207,7 +206,7 @@ func Regex(try string) error {
 	return nil
 }
 
-func NewCrtFileProvider(id string, name string, privatePath string, publicPath string, algorithm string) *crtFileProvider {
+func NewCrtFileProvider(id string, name string, privatePath string, publicPath string, algorithm string) interfaces.Provider {
 	return &crtFileProvider{
 		id:          id,
 		name:        name,

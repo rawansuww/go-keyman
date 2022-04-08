@@ -73,7 +73,7 @@ func (keyman *keyManager) RefreshKey(x string) {
 
 }
 
-func NewKeyManager(pp []interfaces.Provider) *keyManager {
+func NewKeyManager(pp []interfaces.Provider) interfaces.KeyManager {
 	keyman := new(keyManager)
 	kp := make(map[string]keyProvider)
 	keyman.kp = kp

@@ -13,8 +13,6 @@ import (
 var p []interfaces.Provider
 var keyman = NewKeyManager(p)
 
-// var keyman interfaces.KeyManager = (*keyManager)(y)
-
 func TestRegisterProvider(t *testing.T) {
 	id := "afe4a898-2582-482d-b82d-43a592a40373"
 	name := "Test Certificate File Provider"

@@ -134,7 +134,7 @@ func RSAPrivateKeyFromPEM(key []byte) (*rsa.PrivateKey, types.InternalError) {
 }
 
 //deccode ECDSA public key
-func ECDSAPublicKeyFromPEM(key []byte) (*rsa.PublicKey, []byte, types.InternalError) {
+func ECDSAPublicKeyFromPEM(key []byte) (*ecdsa.PublicKey, []byte, types.InternalError) {
 	//regex
 	if regex := Regex(string(key)); regex != nil {
 		return nil, nil, types.InternalError{ErrorMessage: regex.Error(), ErrorDetails: regex}
@@ -154,13 +154,13 @@ func ECDSAPublicKeyFromPEM(key []byte) (*rsa.PublicKey, []byte, types.InternalEr
 			parsedKey = cert.PublicKey
 			fingerprint := sha1.Sum(cert.Raw)
 			thumbPrint := fingerprint[:]
-			return parsedKey.(*rsa.PublicKey), thumbPrint, types.InternalError{}
+			return parsedKey.(*ecdsa.PublicKey), thumbPrint, types.InternalError{}
 		} else {
 			return nil, nil, types.InternalError{ErrorMessage: "Failed to parse public ECDSA key", ErrorDetails: err}
 		}
 	}
 	//validate RSA type
-	if pkey, okay := parsedKey.(*rsa.PublicKey); okay {
+	if pkey, okay := parsedKey.(*ecdsa.PublicKey); okay {
 		return pkey, nil, types.InternalError{} //if no certificate supplied, thumbprint is nil
 	}
 	return nil, nil, types.InternalError{ErrorMessage: "Decoding ECDSA key from file failed"}
